@@ -1,0 +1,6 @@
+node_modules
+*.komodotools
+*.komodoproject
+*.DS_Store
+dist/*
+docs/*

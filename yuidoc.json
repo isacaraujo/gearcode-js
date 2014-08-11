@@ -1,0 +1,11 @@
+{
+    "name": "gearcode-js",
+    "description": "Uma biblioteca Javascript baseada em POO.",
+    "version": "0.3.0",
+    "url": "https://github.com/isacaraujo/gearcode-js",
+    "logo": "",
+    "options": {
+        "outdir": "./docs",
+        "paths": "src"
+    }
+}
