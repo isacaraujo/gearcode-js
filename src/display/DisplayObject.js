@@ -59,10 +59,17 @@
          *  @param {String} [options.selector] Seletor jQuery. Default `div`.
          **/
         setupElementOrOptions: function (options) {
-            if (!options) { options = {}; }
-            if (typeof options['getAttribute'] !== "undefined" || options == document || options == window || typeof options === "string") {
+            if (!options) options = {};
+            
+            if (options instanceof jQuery) {
+                options = options.get(0);
+            }
+            if (typeof options['getAttribute'] !== "undefined" || 
+                -1 !== $.inArray(options, [document, window, document.body]) || 
+                typeof options === "string") {
                 options = { selector: options };
             }
+            
             this.setOptions(options);
             var selector = this.get('selector');
             if (!selector) {
@@ -165,5 +172,13 @@
             return PointMake(left, top);
         }
     });
+    
+    $.document = (function () {
+        return new gc.display.DisplayObject(document);
+    }());
+    
+    $.window = (function () {
+        return new gc.display.DisplayObject(window);
+    }());
     
 }(jQuery, window.gc = window.gc || {}));
