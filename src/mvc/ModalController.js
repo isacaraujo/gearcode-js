@@ -15,20 +15,20 @@
             contentBg: 'white'
         },
         
-        $view: null,
         $content: null,
         
         show: function () {
             this.loadTemplate();
         },
         
+        setView: function (node) {
+            var $lay = this.getOverlay();
+            this.$content = $lay.children('.gc-modal-content');
+            this.$content.append(node);
+            this._super($lay.get(0));
+        },
+        
         onLoad: function () {
-            var tpl = this.template().e();
-            this.$view = this.getOverlay();
-            this.$content = this.$view
-                .children('.gc-modal-content');
-            this.$content
-                .append(tpl);
             this.$view
                 .hide()
                 .appendTo($.document.e().body)
@@ -48,9 +48,8 @@
         
         onWindowResize: function (evt) {
             var w = this.$content.width();
-            var docW = $.document.sel().width();
-            var diff = Math.max((docW - w) / 2, 0);
-            this.$content.css('left', diff);
+            var bodyW = $($.document.e().body).width();
+            this.$content.css('left', Math.max((bodyW - w) / 2, 0));
         },
         
         hide: function () {

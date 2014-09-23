@@ -6,7 +6,7 @@
     
     /** @imports */
     var RemoteLoader = gc.mvc.loaders.RemoteTemplateLoader;
-    var LocalLoader = gc.mvc.loaders.LocalTemplateLoader;
+    var LocalLoader  = gc.mvc.loaders.LocalTemplateLoader;
     
     /** @class */
     var BaseController = gc.mvc.BaseController = gc.core.EventDispatcher.extend({
@@ -31,8 +31,11 @@
             }
         },
         
-        /** @var gc.display.DisplayObject */
-        _template: null,
+        /** @var jQuery */
+        $view:   null,
+        
+        /** @var object */
+        $model:  null,
         
         /** @var enum('none', 'loading', 'fail', 'done') */
         _status: null,
@@ -59,7 +62,7 @@
             loader.off('fail', this.onTemplateFail, false, this);
             this._status = 'done';
             var tpl = loader.node();
-            this._template = new gc.display.DisplayObject(tpl);
+            this.setView(tpl);
             this.onLoad();
         },
         
@@ -81,16 +84,13 @@
         },
         
         onLoad: function () {
-            throw "The method onLoad must be implemented in child-class";
+            //throw "The method onLoad must be implemented in child-class";
+            this.dispatch('load', {controller: this});
         },
         
-        /** 
-         * @returns gc.display.DisplayObject 
-         */
-        template: function () {
-            return this._template;
+        setView: function (node) {
+            this.$view = $(node);
         }
-        
     });
     
 }(jQuery, window.gc = window.gc || {}));
