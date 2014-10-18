@@ -38,6 +38,30 @@
             return callbackListener.apply(scope, args);
         };
     };
+
+    /**
+     * @plugin $.ucfirst
+     * Capitalize a word
+     */
+    $.ucfirst = function (text) {
+        return text.charAt(0).toUpperCase() + text.substr(1);
+    };
+
+    /**
+     * @plugin $.ucfirst
+     * Capitalize all words in text
+     */
+    $.ucwords = function (text) {
+        return $.map(text.split(' '), $.ucfirst).join(' ');
+    };
+
+    $.regexp = function (text) {
+        text = text.replace(/\//g, "\\/")
+                   .replace(/\./g, "\\.")
+                   .replace(/\+/g, "\\+")
+                   .replace(/\*/g, "\\*");
+        return text;
+    };
     
 }(jQuery));
 
@@ -236,6 +260,8 @@
         },
         
         one: function (type, callback, useCapture, scope) {
+            useCapture = useCapture || false;
+            scope = scope || null;
             var listener = {
                 type: type,
                 callback: callback,
@@ -244,9 +270,12 @@
                 one: true
             };
             this.addEventListener(listener);
+            return this;
         },
         
         on: function (type, callback, useCapture, scope) {
+            useCapture = useCapture || false;
+            scope = scope || null;
             var listener = {
                 type: type,
                 callback: callback,
@@ -254,22 +283,26 @@
                 scope: scope
             };
             this.addEventListener(listener);
+            return this;
         },
         
         off: function (type, callback, useCapture, scope) {
             var i = 0;
+            useCapture = useCapture || false;
+            scope = scope || null;
             while (i < this._listeners.length) {
                 var listener = this._listeners[i];
                 if (type == listener.type && 
                     callback == listener.callback && 
                     useCapture == listener.useCapture && 
                     scope == listener.scope) {
-                    this.removeEventListener(listener);
-                    this._listeners.splice(i, 1);
-                    continue;
+                        this.removeEventListener(listener);
+                        this._listeners.splice(i, 1);
+                        continue;
                 }
                 i++;
             }
+            return this;
         },
         
         addEventListener: function (listener) {
@@ -299,7 +332,13 @@
             } else if ("detachEvent" in this._dispatcher) {
                 this._dispatcher.detachEvent("on" + listener.type, listener.handleEvent);
             } else {
-                // this._dispatcher["on" + listener.type] = null;
+                this._dispatcher["on" + listener.type] = null;
+            }
+        },
+
+        removeAllListeners: function () {
+            while (this._listeners.length) {
+                this.removeEventListener(this._listeners.pop());
             }
         },
         
@@ -1179,6 +1218,27 @@
         
         init: function (options) {
             this._super(options);
+            this.loadAccessors();
+        },
+
+        loadAccessors: function () {
+            this.sel().find('[data-accessor]').each(this.callback(this.onWalkAccessor));
+        },
+
+        onWalkAccessor: function (i, el) {
+            var accessor = $(el).data('accessor');
+            var options  = $(el).data('options') || {};
+            var ClassBase = gc.display.DisplayObject;
+            if ($(el).data('class')) {
+                var classFragments = $(el).data('class').split('.');
+                var len = classFragments.length;
+                ClassBase = window;
+                for (var i = 0; i < len; i++) {
+                    var key = classFragments[i];
+                    ClassBase = ClassBase[key];
+                }
+            }
+            this[accessor] = new ClassBase(el);
         }
     });
     
@@ -1200,16 +1260,25 @@
         
         _elements:  null,
         _templates: null,
+        _rootNode: null,
         
-        init: function () {
+        init: function (rootNode) {
             this._super();
+            this.setRootNode(rootNode);
             this.mapDocumentBody();
+        },
+
+        setRootNode: function (node) {
+            node = node || 'body';
+            var $node = $(node);
+            if (!$node.length) $node = $('body');
+            this._rootNode = $node.get(0);
         },
         
         mapDocumentBody: function () {
             this._elements = {};
             this._templates = {};
-            $('body').children().each(this.callback(function (i, item) {
+            $(this._rootNode).children().each(this.callback(function (i, item) {
                 if ($(item).attr('data-role') == 'main') return;
                 if ($(item).attr('id')) {
                     var className = $(item).attr('data-class'),
@@ -1304,6 +1373,886 @@
         }
     });
     
+}(jQuery, window.gc = window.gc || {}));
+
+
+(function ($, gc) {
+
+    gc.validators = gc.validators || {};
+
+    gc.validators.AbstractValidator = gc.core.EventDispatcher.extend({
+
+        options: {
+            name: null
+        },
+
+        observables: null,
+
+        init: function (options) {
+            this._super();
+            this.setOptions(options);
+            this.observables = [];
+        },
+
+        validate: function () {
+            throw "The method Validate must be implemented by child class.";
+        },
+
+        observe: function (observable) {
+            observable.on('blur', this.handleEvent, false, this);
+            this.observables.push(observable);
+        },
+
+        handleEvent: function (evt) {
+            var observable = this.getObservableByElement(evt.target);
+            if (!observable) throw "Unknown observable.";
+            var result = this.validate(observable.val());
+            observable.validateChange && 
+                observable.validateChange(this, result);
+        },
+
+        getObservableByElement: function (el) {
+            for (var i = 0; i < this.observables.length; i++) {
+                var obs = this.observables[i];
+                if (obs.e() == el) return obs;
+            }
+            return null;
+        }
+    });
+
+}(jQuery, window.gc = window.gc || {}));
+
+
+(function ($, gc) {
+
+    gc.validators = gc.validators || {};
+
+    gc.validators.AlphaNumberValidator = gc.validators.AbstractValidator.extend({
+
+        options: {
+            errorMessage: 'Este campo só aceita letras e números.',
+            successMessage: 'Campo válido.'
+        },
+
+        validate: function (value) {
+            return /^[a-z0-9]+$/.test(value);
+        }
+    });
+
+}(jQuery, window.gc = window.gc || {}));
+
+
+(function ($, gc) {
+
+    gc.validators = gc.validators || {};
+
+    gc.validators.AlphaValidator = gc.validators.AbstractValidator.extend({
+
+        options: {
+            errorMessage: 'Este campo só aceita letras.',
+            successMessage: 'Campo válido.'
+        },
+
+        validate: function (value) {
+            
+        }
+    });
+
+}(jQuery, window.gc = window.gc || {}));
+
+
+(function ($, gc) {
+
+    gc.validators = gc.validators || {};
+
+    gc.validators.CreditCardValidator = gc.validators.AbstractValidator.extend({
+
+        options: {
+            errorMessage: 'O cartão de crédito informado é invalido.',
+            successMessage: 'Campo válido.'
+        },
+
+        validate: function () {
+            
+        }
+    });
+
+}(jQuery, window.gc = window.gc || {}));
+
+
+(function ($, gc) {
+
+    gc.validators = gc.validators || {};
+
+    gc.validators.DateTimeValidator = gc.validators.AbstractValidator.extend({
+
+        options: {
+            errorMessage: 'Este campo requer a data e a hora.',
+            successMessage: 'Campo válido.'
+        },
+
+        validate: function () {
+            
+        }
+    });
+
+}(jQuery, window.gc = window.gc || {}));
+
+
+(function ($, gc) {
+
+    gc.validators = gc.validators || {};
+
+    gc.validators.DateValidator = gc.validators.AbstractValidator.extend({
+
+        options: {
+            errorMessage: 'Este campo requer a data.',
+            successMessage: 'Campo válido.'
+        },
+
+        validate: function () {
+            
+        }
+    });
+
+}(jQuery, window.gc = window.gc || {}));
+
+
+(function ($, gc) {
+
+    gc.validators = gc.validators || {};
+
+    gc.validators.DigitValidator = gc.validators.AbstractValidator.extend({
+
+        options: {
+            errorMessage: 'Este campo só aceita números.',
+            successMessage: 'Campo válido.'
+        },
+
+        validate: function () {
+            
+        }
+    });
+
+}(jQuery, window.gc = window.gc || {}));
+
+
+(function ($, gc) {
+
+    gc.validators = gc.validators || {};
+
+    gc.validators.EmailValidator = gc.validators.AbstractValidator.extend({
+
+        options: {
+            errorMessage: 'O endereço de e-mail informado é invalido.',
+            successMessage: 'Campo válido.'
+        },
+
+        validate: function (value) {
+            return /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$/.test(value);
+        }
+    });
+
+}(jQuery, window.gc = window.gc || {}));
+
+
+(function ($, gc) {
+
+    gc.validators = gc.validators || {};
+
+    gc.validators.ExtensionValidator = gc.validators.AbstractValidator.extend({
+
+        options: {
+            errorMessage: 'Extensão não permitida.',
+            successMessage: 'Campo válido.',
+            extensions: null
+        },
+
+        validate: function (value) {
+            var reg = '(' + this.options.extensions + ')$';
+            var result = new RegExp(reg).test(value);
+            console.log('validate extension', result);
+            return result;
+        }
+    });
+
+}(jQuery, window.gc = window.gc || {}));
+
+
+(function ($, gc) {
+
+    gc.validators = gc.validators || {};
+
+    gc.validators.NumberValidator = gc.validators.AbstractValidator.extend({
+
+        options: {
+            errorMessage: 'Este campo só aceita números em notação decimal, negativos e/ou fracionados.',
+            successMessage: 'Campo válido.'
+        },
+
+        validate: function () {
+            
+        }
+    });
+
+}(jQuery, window.gc = window.gc || {}));
+
+
+(function ($, gc) {
+
+    gc.validators = gc.validators || {};
+
+    gc.validators.PhoneValidator = gc.validators.AbstractValidator.extend({
+
+        options: {
+            errorMessage: 'Telefone inválido.',
+            successMessage: 'Campo válido.'
+        },
+
+        validate: function () {
+            
+        }
+    });
+
+}(jQuery, window.gc = window.gc || {}));
+
+
+(function ($, gc) {
+
+    gc.validators = gc.validators || {};
+
+    gc.validators.RequiredValidator = gc.validators.AbstractValidator.extend({
+
+        options: {
+            errorMessage: 'Este campo é requerido.',
+            successMessage: 'Campo válido.'
+        },
+
+        validate: function (value) {
+            return /^[a-z0-9]+$/.test(value);
+        }
+    });
+
+}(jQuery, window.gc = window.gc || {}));
+
+
+(function ($, gc) {
+
+    gc.validators = gc.validators || {};
+
+    gc.validators.UrlValidator = gc.validators.AbstractValidator.extend({
+
+        options: {
+            errorMessage: 'Endereço de url inválido.',
+            successMessage: 'Campo válido.'
+        },
+
+        validate: function (value) {
+            var result = /^http(s)?:\/\/(\w+\.){1,}\w+/.test(value);
+            console.log('url validate: ', result);
+            return result;
+        }
+    });
+
+}(jQuery, window.gc = window.gc || {}));
+
+
+(function ($, gc) {
+
+    gc.validators = gc.validators || {};
+
+    gc.validators.ValidatorFactory = gc.core.EventDispatcher.extend({
+
+        statics: {
+
+            _validators: {
+                "email": "gc.validators.EmailValidator",
+                "url": "gc.validators.UrlValidator",
+                "date": "gc.validators.DateValidator",
+                "datetime": "gc.validators.DateTimeValidator",
+                "number": "gc.validators.NumberValidator",
+                "digit": "gc.validators.DigitValidator",
+                "alpha": "gc.validators.AlphaValidator",
+                "alphanumber": "gc.validators.AlphaNumberValidator",
+                "phone": "gc.validators.PhoneValidator",
+                "creditcard": "gc.validators.CreditCardValidator",
+                "extension": "gc.validators.ExtensionValidator"
+            },
+
+            make: function (options) {
+                if (typeof options === 'string') options = { name: options };
+                var className = this._validators[options.name];
+                if (className === undefined) {
+                    throw "The validator " + options.name + " is not registered.";
+                }
+                var Klass = this.resolveClass(className);
+                return new Klass(options);
+            },
+
+            registerValidator: function (name, className) {
+                this.resolveClass(Klass);
+                this._validators[name] = className;
+            },
+
+            resolveClass: function (className) {
+                var Klass = window,
+                    parts = className.split('.');
+                for (var i = 0; i < parts.length; i++) {
+                    if (undefined === Klass[parts[i]]) {
+                        throw "The class " + className + " not exist!";
+                    }
+                    Klass = Klass[parts[i]];
+                }
+                return Klass;
+            }
+        }
+    });
+
+}(jQuery, window.gc = window.gc || {}));
+
+
+/**
+ * Ainda não está funcionando. Preciso dedicar algumas horas para este item
+ */
+(function ($, gc, form) {
+
+    form.utils = form.utils || {};
+
+    gc.form.utils.TextFieldMask = gc.display.DisplayObject.extend({
+
+        mask: null,
+        field: null,
+        
+
+        init: function (mask, field) {
+            this.mask = mask;
+            this.field = field;
+            this.setupEvents();
+        },
+
+        setupEvents: function () {
+            this.field.on('blur', this.handleBlur, false, this);
+            this.field.on('keydown', this.handleKeydown, false, this);
+            this.field.on('keypress', this.handleKeypress, false, this);
+            this.field.on('paste', this.handlePaste, false, this);
+        },
+
+        handleBlur: function (evt) {
+            this.checkVal();
+            if (this.field.val() != focusText) this.field.sel().change();
+        },
+
+        handleKeydown: function (evt) {
+            var k = e.which,
+                pos,
+                begin,
+                end;
+            oldVal = input.val();
+            //backspace, delete, and escape get special treatment
+            if (k === 8 || k === 46 || (iPhone && k === 127)) {
+                pos = this.caret();
+
+                if (pos.end - pos.begin === 0) {
+                    pos.begin = k !== 46 ? seekPrev(pos.begin) : (end = seekNext(pos.begin - 1));
+                    pos.end = k === 46 ? seekNext(pos.end) : pos.end;
+                }
+                clearBuffer(pos.begin, pos.end);
+                shiftL(begin, end - 1);
+                e.preventDefault();
+
+            } else if (k === 13) { // enter
+                this.handleBlur(e);
+            } else if (k === 27) { // escape
+                this.field.val(focusText);
+                this.caret(0, checkVal());
+                e.preventDefault();
+            }
+        },
+
+        handleKeypress: function (evt) {
+            if (input.prop("readonly")) {
+                return;
+            }
+
+            var k = e.which,
+                pos = input.caret(),
+                p,
+                c,
+                next;
+
+            if (e.ctrlKey || e.altKey || e.metaKey || k < 32) { //Ignore
+                return;
+            } else if (k && k !== 13) {
+                if (pos.end - pos.begin !== 0) {
+                    clearBuffer(pos.begin, pos.end);
+                    shiftL(pos.begin, pos.end - 1);
+                }
+
+                p = seekNext(pos.begin - 1);
+                if (p < len) {
+                    c = String.fromCharCode(k);
+                    if (tests[p].test(c)) {
+                        shiftR(p);
+
+                        buffer[p] = c;
+                        writeBuffer();
+                        next = seekNext(p);
+
+                        if (android) {
+                            //Path for CSP Violation on FireFox OS 1.1
+                            var proxy = function() {
+                                $.proxy($.fn.caret, input, next)();
+                            };
+
+                            setTimeout(proxy, 0);
+                        } else {
+                            input.caret(next);
+                        }
+                        if (pos.begin <= lastRequiredNonMaskPos) {
+                            this.tryFireCompleted();
+                        }
+                    }
+                }
+                e.preventDefault();
+            }
+        },
+
+        handlePaste: function (evt) {
+            if (input.prop("readonly")) {
+                return;
+            }
+
+            setTimeout(this.callback(function() {
+                var pos = checkVal(true);
+                this.caret(pos);
+                this.tryFireCompleted();
+            }), 0);
+        },
+
+        caret: function(begin, end) {
+            var range;
+            if (typeof begin == 'number') {
+                end = (typeof end === 'number') ? end : begin;
+                return this.each(function() {
+                    if (this.setSelectionRange) {
+                        this.setSelectionRange(begin, end);
+                    } else if (this.createTextRange) {
+                        range = this.createTextRange();
+                        range.collapse(true);
+                        range.moveEnd('character', end);
+                        range.moveStart('character', begin);
+                        range.select();
+                    }
+                });
+            } else {
+                if (this[0].setSelectionRange) {
+                    begin = this.field.selectionStart;
+                    end = this.field.selectionEnd;
+                } else if (document.selection && document.selection.createRange) {
+                    range = document.selection.createRange();
+                    begin = 0 - range.duplicate().moveStart('character', -100000);
+                    end = begin + range.text.length;
+                }
+                return {
+                    begin: begin,
+                    end: end
+                };
+            }
+        },
+
+        mask: function () {
+            var input,
+                defs,
+                tests,
+                partialPosition,
+                firstNonMaskPos,
+                lastRequiredNonMaskPos,
+                len,
+                oldVal;
+
+            defs = $.mask.definitions;
+            tests = [];
+            partialPosition = len = mask.length;
+            firstNonMaskPos = null;
+
+            $.each(mask.split(""), function(i, c) {
+                if (c == '?') {
+                    len--;
+                    partialPosition = i;
+                } else if (defs[c]) {
+                    tests.push(new RegExp(defs[c]));
+                    if (firstNonMaskPos === null) {
+                        firstNonMaskPos = tests.length - 1;
+                    }
+                    if (i < partialPosition) {
+                        lastRequiredNonMaskPos = tests.length - 1;
+                    }
+                } else {
+                    tests.push(null);
+                }
+            });
+
+            var input = $(this),
+                buffer = $.map(
+                    mask.split(""),
+                    function(c, i) {
+                        if (c != '?') {
+                            return defs[c] ? settings.placeholder : c;
+                        }
+                    }),
+                defaultBuffer = buffer.join(''),
+                focusText = input.val();
+        },
+            
+        tryFireCompleted: function () {
+            if (!settings.completed) {
+                return;
+            }
+
+            for (var i = firstNonMaskPos; i <= lastRequiredNonMaskPos; i++) {
+                if (tests[i] && buffer[i] === settings.placeholder) {
+                    return;
+                }
+            }
+            settings.completed.call(input);
+        },
+
+        seekNext: function (pos) {
+            while (++pos < len && !tests[pos]);
+            return pos;
+        },
+
+        seekPrev: function (pos) {
+            while (--pos >= 0 && !tests[pos]);
+            return pos;
+        },
+
+        shiftL: function (begin, end) {
+            var i,
+                j;
+
+            if (begin < 0) {
+                return;
+            }
+
+            for (i = begin, j = seekNext(end); i < len; i++) {
+                if (tests[i]) {
+                    if (j < len && tests[i].test(buffer[j])) {
+                        buffer[i] = buffer[j];
+                        buffer[j] = settings.placeholder;
+                    } else {
+                        break;
+                    }
+
+                    j = seekNext(j);
+                }
+            }
+            writeBuffer();
+            input.caret(Math.max(firstNonMaskPos, begin));
+        },
+
+        shiftR: function (pos) {
+            var i,
+                c,
+                j,
+                t;
+
+            for (i = pos, c = settings.placeholder; i < len; i++) {
+                if (tests[i]) {
+                    j = seekNext(i);
+                    t = buffer[i];
+                    buffer[i] = c;
+                    if (j < len && tests[j].test(t)) {
+                        c = t;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        },
+
+        androidInputEvent: function (e) {
+            var curVal = input.val();
+            var pos = input.caret();
+            if (curVal.length < oldVal.length) {
+                // a deletion or backspace happened
+                checkVal(true);
+                while (pos.begin > 0 && !tests[pos.begin - 1])
+                    pos.begin--;
+                if (pos.begin === 0) {
+                    while (pos.begin < firstNonMaskPos && !tests[pos.begin])
+                        pos.begin++;
+                }
+                input.caret(pos.begin, pos.begin);
+            } else {
+                var pos2 = checkVal(true);
+                while (pos.begin < len && !tests[pos.begin])
+                    pos.begin++;
+
+                input.caret(pos.begin, pos.begin);
+            }
+
+            tryFireCompleted();
+        },
+
+        clearBuffer: function (start, end) {
+            var i;
+            for (i = start; i < end && i < len; i++) {
+                if (tests[i]) {
+                    buffer[i] = settings.placeholder;
+                }
+            }
+        },
+
+        writeBuffer: function () {
+            input.val(buffer.join(''));
+        },
+
+        checkVal: function (allow) {
+            //try to place characters where they belong
+            var test = this.field.value,
+                lastMatch = -1,
+                i,
+                c,
+                pos;
+
+            for (i = 0, pos = 0; i < len; i++) {
+                if (tests[i]) {
+                    buffer[i] = '_';
+                    while (pos++ < test.length) {
+                        c = test.charAt(pos - 1);
+                        if (tests[i].test(c)) {
+                            buffer[i] = c;
+                            lastMatch = i;
+                            break;
+                        }
+                    }
+                    if (pos > test.length) {
+                        clearBuffer(i + 1, len);
+                        break;
+                    }
+                } else {
+                    if (buffer[i] === test.charAt(pos)) {
+                        pos++;
+                    }
+                    if (i < partialPosition) {
+                        lastMatch = i;
+                    }
+                }
+            }
+            if (allow) {
+                writeBuffer();
+            } else if (lastMatch + 1 < partialPosition) {
+                if (settings.autoclear || buffer.join('') === defaultBuffer) {
+                    // Invalid value. Remove it and replace it with the
+                    // mask, which is the default behavior.
+                    if (this.field.value) this.field.value = "";
+                    this.clearBuffer(0, len);
+                } else {
+                    // Invalid value, but we opt to show the value to the
+                    // user and allow them to correct their mistake.
+                    this.writeBuffer();
+                }
+            } else {
+                writeBuffer();
+                input.val(this.field.value.substring(0, lastMatch + 1));
+            }
+            return (partialPosition ? i : firstNonMaskPos);
+        }
+    });
+
+}(jQuery, window.gc = window.gc || {}, gc.form = gc.form || {}));
+
+
+;(function ($, gc) {
+
+    gc.form = gc.form || {};
+
+    gc.form.Form = gc.display.DisplayObject.extend({
+
+        init: function (options) {
+            this._super(options);
+        }
+    });
+
+}(jQuery, window.gc = window.gc || {}));
+
+
+(function ($, gc) {
+
+    gc.form = gc.form || {};
+
+    $.Events.ValidateChange = 'validate_change';
+
+    gc.form.TextField = gc.display.DisplayObject.extend({
+
+        options: {
+            selector: '<input type="text">',
+            required: false,
+            validators: null,
+            mask: null,
+            prefix: '',
+            sufix: '',
+            useStatusPlacement: true,
+            statusPlacement: null,
+            hidePlacementOnSuccess: false,
+            successMessage: 'Este campo é válido.',
+            requiredMessage: 'Campo obrigatório'
+        },
+
+        validators: null,
+        mask: null,
+        hasAttachedEvent: false,
+        errors: null,
+
+        init: function (options) {
+            this._super(options);
+            // this.setupMask();
+            this.setupValidators();
+            this.setupStatusPlacement();
+        },
+
+        setupStatusPlacement: function () {
+            if (!this.options.useStatusPlacement) return;
+            if (!this.options.statusPlacement) {
+                var $next = this.sel().next();
+                if (!$next.length) {
+                    $next = $('<label class="validate-status" />');
+                }
+                this.options.statusPlacement = $next.get(0);
+            }
+            $(this.options.statusPlacement).hide();
+        },
+
+        setupValidators: function (validators) {
+            this.validators = [];
+            this.parseAttributes();
+            if (!this.get('validators')) this.set('validators', []);
+            for (var i = 0; i < this.options.validators.length; i++) {
+                this.addValidator(this.options.validators[i]);
+            }
+            if (!this.validators.length && this.options.required) this.bindListener();
+        },
+
+        parseAttributes: function () {
+            //<input type="text" class="textfield" required validators="url,extension:extensions=jpg|png|gif" />
+            var $selector = this.sel();
+            var validators = $selector.attr('validators');
+            if ($selector.attr('required')) this.options.required = true;
+            if ($selector.attr('prefix')) this.options.prefix = $selector.attr('prefix');
+            if ($selector.attr('sufix')) this.options.sufix = $selector.attr('sufix');
+            if (validators) {
+                validators = validators.split(',');
+                for (var i = 0; i < validators.length; i++) {
+                    var parts = validators[i].split(':');
+                    var validator =  { name: parts.shift() };
+                    for (var k = 0; k < parts.length; k++) {
+                        var option = parts[k].split('=');
+                        var optionName = option[0];
+                        validator[ optionName ] = option[1];
+                    }
+                    this.addValidator(validator);
+                }
+            }
+        },
+
+        setupMask: function () {
+            throw "Not implemented yet!";
+            var mask = this.get('mask');
+            if (!mask) return;
+            this.mask = new gc.form.utils.TextFieldMask(mask, this);
+        },
+
+        addValidator: function (validator) {
+            validator = gc.validators.ValidatorFactory.make(validator);
+            this.validators.push(validator);
+            this.bindListener();
+        },
+
+        bindListener: function () {
+            if (this.hasAttachedEvent) return;
+            this.on('blur', this.handleEvent, false, this);
+            this.hasAttachedEvent = true;
+        },
+
+        handleEvent: function (evt) {
+            var errors = [],
+                len = this.validators.length,
+                status = true,
+                _value = this.val();
+
+            if (!new RegExp('^' + $.regexp(this.options.prefix)).test(_value)) {
+                console.log('prefix (1)', this.options.prefix);
+                console.log('prefix');
+                _value = this.options.prefix + _value;
+            }
+            if (!new RegExp($.regexp(this.options.sufix) + '$').test(_value)) {
+                _value = this.options.sufix + _value;
+            }
+            if (this.val() !== _value) this.val(_value);
+
+            // check if options is not required and empty
+            // in these conditions, status is valid;
+            if (!this.options.required && !_value.trim().length) {
+                status = true;
+            } else {
+                if (this.options.required && !_value.trim().length) {
+                    errors.push(this.options.requiredMessage);
+                }
+                for (var i = 0; i < len; i++) {
+                    var temp = this.validators[i];
+                    result = temp.validate(this.val());
+                    if (!result) {
+                        errors.push(temp.get('errorMessage'));
+                    }
+                }
+                status = errors.length === 0;
+            }
+            this.validateChange(errors, status);
+        },
+
+        val: function () {
+            if (arguments.length && typeof arguments[0] === 'string') {
+                this.sel().val(arguments[0]);
+                return;
+            }
+            return this.sel().val();
+        },
+
+        attachPlacement: function () {
+            if (!this.options.statusPlacement.parentNode || 
+                !this.options.statusPlacement.parentNode.parentNode) {
+                this.sel().after(this.options.statusPlacement);
+            }
+        },
+
+        validateChange: function (errors, result) {
+            this.dispatch($.Events.ValidateChange, { 
+                field: this,
+                errors: errors,
+                result: result
+            });
+            if (!this.options.useStatusPlacement) return;
+            if (result && this.options.hidePlacementOnSuccess) {
+                $(this.options.statusPlacement).hide();
+                return;
+            }
+            var message, domClass;
+            if (result) {
+                domClass = 'valid';
+                message = this.get('successMessage');
+            } else {
+                domClass = 'invalid';
+                message = errors[0];
+            }
+            this.attachPlacement();
+            $(this.options.statusPlacement)
+                .addClass(domClass)
+                .show()
+                .text(message);
+        }
+    });
+
 }(jQuery, window.gc = window.gc || {}));
 
 
@@ -1417,7 +2366,7 @@
             _baseUrl: '',
             
             setBaseURL: function (url) {
-                this._baserl = url;
+                this._baseUrl = url;
             },
             
             baseURL: function () {
@@ -1508,11 +2457,14 @@
     gc.mvc.ModalController = gc.mvc.BaseController.extend({
         
         options: {
+            zIndex: 999999999,
             overlayColor: '#000000',
             dismissOnClickOverlay: true,
             contentTop: '24px',
             contentWidth: '66%',
-            contentBg: 'white'
+            contentBg: 'white',
+            hideOnEsc: true,
+            showBtnClose: true
         },
         
         $content: null,
@@ -1543,17 +2495,41 @@
                     .on('click', this.callback(this.hide));
             $.window.on('resize', this.onWindowResize, false, this);
             this.onWindowResize();
+            this.options.hideOnEsc && 
+                $.document.on('keydown', this.handleKeyDown, false, this);
+            this.options.showBtnClose &&
+                this.$view.find('.gc-modal-close').on('click', this.callback(this.handleBtnClose));
             this.dispatch('show', { controller: this });
+        },
+
+        handleKeyDown: function (evt) {
+            evt.which == 27 && this.hide();
+        },
+
+        handleBtnClose: function (evt) {
+            this.hide();
         },
         
         onWindowResize: function (evt) {
             var w = this.$content.width();
             var bodyW = $($.document.e().body).width();
             this.$content.css('left', Math.max((bodyW - w) / 2, 0));
+            this.updateHeight();
+        },
+
+        updateHeight: function () {
+            this.$view.css('height', '100%');
+            this.$view
+                .css('height', $.document.sel().height());
         },
         
         hide: function () {
-            $.window.off('resize', this.onWindowResize, false, this);
+            $.window
+                .off('resize', this.onWindowResize, false, this);
+            $.document
+                .off('keydown', this.handleKeyDown, false, this);
+            this.$view
+                .find('.gc-modal-close').off('click');
             this.$view
                 .children('.gc-modal-overlay')
                 .off('click');
@@ -1569,15 +2545,16 @@
         
         getOverlay: function () {
             var $overlay = $('<div class="gc-modal">' + 
-                '<div class="gc-modal-overlay"></div>' + 
-                '<div class="gc-modal-content"></div>' + 
+                '<div class="gc-modal-overlay" />' + 
+                '<div class="gc-modal-content" />' + 
             '</div>');
             $overlay.css({
                 position: 'absolute',
                 width: '100%',
                 height: '100%',
                 top: 0,
-                left: 0
+                left: 0,
+                zIndex: this.options.zIndex
             });
             $overlay.children('.gc-modal-overlay').css({
                 position: 'absolute',
@@ -1596,6 +2573,12 @@
                 left:       '20%',
                 backgroundColor: this.options.contentBg
             });
+
+            if (this.options.showBtnClose) {
+                $overlay.children('.gc-modal-content')
+                    .append('<button class="gc-modal-close">&times;</button>');
+            }
+
             return $overlay;
         }
     });

@@ -53,6 +53,8 @@
         },
         
         one: function (type, callback, useCapture, scope) {
+            useCapture = useCapture || false;
+            scope = scope || null;
             var listener = {
                 type: type,
                 callback: callback,
@@ -61,9 +63,12 @@
                 one: true
             };
             this.addEventListener(listener);
+            return this;
         },
         
         on: function (type, callback, useCapture, scope) {
+            useCapture = useCapture || false;
+            scope = scope || null;
             var listener = {
                 type: type,
                 callback: callback,
@@ -71,22 +76,26 @@
                 scope: scope
             };
             this.addEventListener(listener);
+            return this;
         },
         
         off: function (type, callback, useCapture, scope) {
             var i = 0;
+            useCapture = useCapture || false;
+            scope = scope || null;
             while (i < this._listeners.length) {
                 var listener = this._listeners[i];
                 if (type == listener.type && 
                     callback == listener.callback && 
                     useCapture == listener.useCapture && 
                     scope == listener.scope) {
-                    this.removeEventListener(listener);
-                    this._listeners.splice(i, 1);
-                    continue;
+                        this.removeEventListener(listener);
+                        this._listeners.splice(i, 1);
+                        continue;
                 }
                 i++;
             }
+            return this;
         },
         
         addEventListener: function (listener) {
@@ -116,7 +125,13 @@
             } else if ("detachEvent" in this._dispatcher) {
                 this._dispatcher.detachEvent("on" + listener.type, listener.handleEvent);
             } else {
-                // this._dispatcher["on" + listener.type] = null;
+                this._dispatcher["on" + listener.type] = null;
+            }
+        },
+
+        removeAllListeners: function () {
+            while (this._listeners.length) {
+                this.removeEventListener(this._listeners.pop());
             }
         },
         

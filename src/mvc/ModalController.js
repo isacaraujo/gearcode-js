@@ -8,11 +8,14 @@
     gc.mvc.ModalController = gc.mvc.BaseController.extend({
         
         options: {
+            zIndex: 999999999,
             overlayColor: '#000000',
             dismissOnClickOverlay: true,
             contentTop: '24px',
             contentWidth: '66%',
-            contentBg: 'white'
+            contentBg: 'white',
+            hideOnEsc: true,
+            showBtnClose: true
         },
         
         $content: null,
@@ -43,17 +46,41 @@
                     .on('click', this.callback(this.hide));
             $.window.on('resize', this.onWindowResize, false, this);
             this.onWindowResize();
+            this.options.hideOnEsc && 
+                $.document.on('keydown', this.handleKeyDown, false, this);
+            this.options.showBtnClose &&
+                this.$view.find('.gc-modal-close').on('click', this.callback(this.handleBtnClose));
             this.dispatch('show', { controller: this });
+        },
+
+        handleKeyDown: function (evt) {
+            evt.which == 27 && this.hide();
+        },
+
+        handleBtnClose: function (evt) {
+            this.hide();
         },
         
         onWindowResize: function (evt) {
             var w = this.$content.width();
             var bodyW = $($.document.e().body).width();
             this.$content.css('left', Math.max((bodyW - w) / 2, 0));
+            this.updateHeight();
+        },
+
+        updateHeight: function () {
+            this.$view.css('height', '100%');
+            this.$view
+                .css('height', $.document.sel().height());
         },
         
         hide: function () {
-            $.window.off('resize', this.onWindowResize, false, this);
+            $.window
+                .off('resize', this.onWindowResize, false, this);
+            $.document
+                .off('keydown', this.handleKeyDown, false, this);
+            this.$view
+                .find('.gc-modal-close').off('click');
             this.$view
                 .children('.gc-modal-overlay')
                 .off('click');
@@ -69,15 +96,16 @@
         
         getOverlay: function () {
             var $overlay = $('<div class="gc-modal">' + 
-                '<div class="gc-modal-overlay"></div>' + 
-                '<div class="gc-modal-content"></div>' + 
+                '<div class="gc-modal-overlay" />' + 
+                '<div class="gc-modal-content" />' + 
             '</div>');
             $overlay.css({
                 position: 'absolute',
                 width: '100%',
                 height: '100%',
                 top: 0,
-                left: 0
+                left: 0,
+                zIndex: this.options.zIndex
             });
             $overlay.children('.gc-modal-overlay').css({
                 position: 'absolute',
@@ -96,6 +124,12 @@
                 left:       '20%',
                 backgroundColor: this.options.contentBg
             });
+
+            if (this.options.showBtnClose) {
+                $overlay.children('.gc-modal-content')
+                    .append('<button class="gc-modal-close">&times;</button>');
+            }
+
             return $overlay;
         }
     });

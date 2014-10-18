@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+    <head>
+        <meta charset="utf-8">
+        <title>Form : Gearcode</title>
+        <script src="../../vendor/jquery/jquery.min.js"></script>
+        <script src="../../vendor/greensock/TweenMax.min.js"></script>
+        <script src="../../dist/gearcode.js?2"></script>
+        <style>
+        .form-field {
+            float: left;;
+            width: 100%;
+            min-height: 30px;
+        }
+        </style>
+    </head>
+    <body>
+        <div id="main">
+            <form id="form1" data-accessor="form">
+                <div class="form-field">
+                    <input type="text" class="textfield" validators="email" />
+                </div>
+                <div class="form-field">
+                    <input type="text" class="textfield" required validators="url,extension:extensions=jpg|png|gif" prefix="http://" />
+                </div>
+            </form>
+        </div>
+        <script>
+        $('.textfield').each(function () {
+            var field = new gc.form.TextField(this);
+            field.on($.Events.ValidateChange, function (evt) {
+                var data = evt.detail;
+                var isvalid = data.result;
+                console.log('Validate result: ', isvalid, !isvalid ? data.errors[0] : null);
+            });
+        });
+        </script>
+    </body>
+</html>

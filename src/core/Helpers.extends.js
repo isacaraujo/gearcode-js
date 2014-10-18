@@ -38,5 +38,29 @@
             return callbackListener.apply(scope, args);
         };
     };
+
+    /**
+     * @plugin $.ucfirst
+     * Capitalize a word
+     */
+    $.ucfirst = function (text) {
+        return text.charAt(0).toUpperCase() + text.substr(1);
+    };
+
+    /**
+     * @plugin $.ucfirst
+     * Capitalize all words in text
+     */
+    $.ucwords = function (text) {
+        return $.map(text.split(' '), $.ucfirst).join(' ');
+    };
+
+    $.regexp = function (text) {
+        text = text.replace(/\//g, "\\/")
+                   .replace(/\./g, "\\.")
+                   .replace(/\+/g, "\\+")
+                   .replace(/\*/g, "\\*");
+        return text;
+    };
     
 }(jQuery));

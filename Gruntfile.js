@@ -30,12 +30,29 @@ module.exports = function(grunt) {
                 src: ['src/components/*.js'],
                 dest: 'dist/components.js'
             },
+            validators: {
+                src: ['src/validators/*.js'],
+                dest: 'dist/validators.js'
+            },
+            form: {
+                src: ['src/form/utils/*.js', 'src/form/*.js'],
+                dest: 'dist/form.js'
+            },
             mvc: {
                 src: ['src/mvc/loaders/*.js', 'src/mvc/*.js'],
                 dest: 'dist/mvc.js'
             },
             gearcode: {
-                src: ['dist/core.js', 'dist/graph.js', 'dist/display.js', 'dist/screen.js', 'dist/components.js', 'dist/mvc.js'],
+                src: [
+                    'dist/core.js',
+                    'dist/graph.js',
+                    'dist/display.js',
+                    'dist/screen.js',
+                    'dist/components.js',
+                    'dist/validators.js',
+                    'dist/form.js',
+                    'dist/mvc.js'
+                ],
                 dest: 'dist/gearcode.js'
             }
         },

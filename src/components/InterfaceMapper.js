@@ -13,16 +13,25 @@
         
         _elements:  null,
         _templates: null,
+        _rootNode: null,
         
-        init: function () {
+        init: function (rootNode) {
             this._super();
+            this.setRootNode(rootNode);
             this.mapDocumentBody();
+        },
+
+        setRootNode: function (node) {
+            node = node || 'body';
+            var $node = $(node);
+            if (!$node.length) $node = $('body');
+            this._rootNode = $node.get(0);
         },
         
         mapDocumentBody: function () {
             this._elements = {};
             this._templates = {};
-            $('body').children().each(this.callback(function (i, item) {
+            $(this._rootNode).children().each(this.callback(function (i, item) {
                 if ($(item).attr('data-role') == 'main') return;
                 if ($(item).attr('id')) {
                     var className = $(item).attr('data-class'),

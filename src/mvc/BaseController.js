@@ -15,7 +15,7 @@
             _baseUrl: '',
             
             setBaseURL: function (url) {
-                this._baserl = url;
+                this._baseUrl = url;
             },
             
             baseURL: function () {
