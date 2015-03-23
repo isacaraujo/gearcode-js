@@ -71,12 +71,12 @@
             loader.off('load', this.onTemplateLoad, false, this);
             loader.off('fail', this.onTemplateFail, false, this);
             this._status = 'fail';
-            console.log("Template is unavailable.");
+            console.log("Template unavailable.");
         },
         
         getLoader: function () {
             if ('local' === this.options.template.type) {
-                return new LocalLoader({selector: this.options.template.selector});
+                return new LocalLoader({ selector: this.options.template.selector });
             }
             return new RemoteLoader({
                 uri: BaseController.baseURL() + this.options.template.uri
@@ -85,7 +85,7 @@
         
         onLoad: function () {
             //throw "The method onLoad must be implemented in child-class";
-            this.dispatch('load', {controller: this});
+            this.dispatch('load', { controller: this });
         },
         
         setView: function (node) {

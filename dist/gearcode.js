@@ -12,9 +12,9 @@
      * @static
      * Check if this is a Mobile device.
      */
-    $.isMobile = (function () {
-        return (/ipad|android|ipod|iphone/i).test(window.navigator.userAgent);
-    }());
+    $.isMobile = (function (a) {
+		return /(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od|ad)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(a);
+    }(navigator.userAgent || navigator.vendor || window.opera));
     
     /**
      * @plugin $.Events
@@ -60,6 +60,18 @@
                    .replace(/\./g, "\\.")
                    .replace(/\+/g, "\\+")
                    .replace(/\*/g, "\\*");
+        return text;
+    };
+
+    $.removeAccents = function (text) {
+        var haystack    = "ãáàäâéèëêíìïîõóòöôúùüûç",
+            replacement = 'aaaaaeeeeiiiiooooouuuuc';
+		text = text.toLowerCase();
+        for (var i = 0; i < haystack.length; i++) {
+            var chr = haystack.charAt(i);
+            var rep = replacement.charAt(i);
+            text = text.replace(new RegExp(chr, 'g'), rep);
+        }
         return text;
     };
     
@@ -1229,6 +1241,13 @@
             var accessor = $(el).data('accessor');
             var options  = $(el).data('options') || {};
             var ClassBase = gc.display.DisplayObject;
+            var isArray = false;
+            if (/\[\]$/.test(accessor)) {
+                accessor = accessor.substr(0, accessor.length -2);
+                isArray = true;
+            }
+            if (typeof this[accessor] === 'undefined') return;
+            if (isArray && !$.isArray(this[accessor])) this[accessor] = [];
             if ($(el).data('class')) {
                 var classFragments = $(el).data('class').split('.');
                 var len = classFragments.length;
@@ -1238,7 +1257,11 @@
                     ClassBase = ClassBase[key];
                 }
             }
-            this[accessor] = new ClassBase(el);
+            if (isArray) {
+                this[accessor].push(new ClassBase(el));
+            } else {
+                this[accessor] = new ClassBase(el);
+            }
         }
     });
     
@@ -2319,6 +2342,8 @@
 (function ($, gc, mvc) {
     "use strict";
     
+    var TemplateCache = {};
+    
     /** @namespace */
     mvc.loaders = mvc.loaders || {};
     
@@ -2326,24 +2351,32 @@
     mvc.loaders.RemoteTemplateLoader = mvc.loaders.BaseTemplateLoader.extend({
         
         options: {
-            uri: ''
+            uri: '',
+            useCache: true
         },
         
         load: function () {
+            if (this.options.useCache && 
+                typeof(TemplateCache[this.options.uri]) !== 'undefined') {
+                this.onLoad(TemplateCache[this.options.uri]);
+                return;
+            }
             $.get(this.options.uri)
              .done(this.callback(this.onLoad))
              .fail(this.callback(this.onFail));
         },
         
         onLoad: function (content) {
+            if (this.options.useCache) {
+                TemplateCache[this.options.uri] = content;
+            }
             this._node = $(content).get(0);
-            this.dispatch('load', {loader: this});
+            this.dispatch('load', { loader: this });
         },
         
         onFail: function () {
-            this.dispatch('fail', {loader: this});
+            this.dispatch('fail', { loader: this });
         }
-        
     });
     
 }(jQuery, window.gc = window.gc || {}, gc.mvc = gc.mvc || {}));
@@ -2422,12 +2455,12 @@
             loader.off('load', this.onTemplateLoad, false, this);
             loader.off('fail', this.onTemplateFail, false, this);
             this._status = 'fail';
-            console.log("Template is unavailable.");
+            console.log("Template unavailable.");
         },
         
         getLoader: function () {
             if ('local' === this.options.template.type) {
-                return new LocalLoader({selector: this.options.template.selector});
+                return new LocalLoader({ selector: this.options.template.selector });
             }
             return new RemoteLoader({
                 uri: BaseController.baseURL() + this.options.template.uri
@@ -2436,7 +2469,7 @@
         
         onLoad: function () {
             //throw "The method onLoad must be implemented in child-class";
-            this.dispatch('load', {controller: this});
+            this.dispatch('load', { controller: this });
         },
         
         setView: function (node) {
@@ -2464,7 +2497,8 @@
             contentWidth: '66%',
             contentBg: 'white',
             hideOnEsc: true,
-            showBtnClose: true
+            showBtnClose: true,
+            alwaysOnTop: true
         },
         
         $content: null,
@@ -2489,17 +2523,62 @@
         },
         
         onFadeIn: function () {
+            this.setupEvents();
+            this.onWindowResize();
+            this.dispatch('show', { controller: this });
+        },
+
+        setupEvents: function () {
             this.options.dismissOnClickOverlay && 
                 this.$view
                     .children('.gc-modal-overlay')
                     .on('click', this.callback(this.hide));
-            $.window.on('resize', this.onWindowResize, false, this);
-            this.onWindowResize();
+            $.window
+                .on('resize', this.onWindowResize, false, this);
             this.options.hideOnEsc && 
                 $.document.on('keydown', this.handleKeyDown, false, this);
             this.options.showBtnClose &&
-                this.$view.find('.gc-modal-close').on('click', this.callback(this.handleBtnClose));
-            this.dispatch('show', { controller: this });
+                this.$view.find('.gc-modal-close')
+                    .on('click', this.callback(this.handleBtnClose));
+            this.setAlwaysOnTop();
+        },
+
+        removeEvents: function () {
+            $.window
+                .off('resize', this.onWindowResize, false, this);
+            $.document
+                .off('keydown', this.handleKeyDown, false, this);
+            this.$view
+                .find('.gc-modal-close').off('click');
+            this.$view
+                .children('.gc-modal-overlay')
+                .off('click');
+            this.removeAlwaysOnTop();
+        },
+        
+        setAlwaysOnTop: function () {
+            if (!this.options.alwaysOnTop) return;
+            $.window.on('scroll', this.handleScroll, false, this);
+			this.handleScroll();
+        },
+        
+        removeAlwaysOnTop: function () {
+            if (!this.options.alwaysOnTop) return;
+            $.window.off('scroll', this.handleScroll, false, this);
+        },
+        
+        handleScroll: function (evt) {
+            var scrollTop = parseFloat($.window.e().scrollY),
+                //top = parseFloat(this.options.contentTop),
+                h = parseFloat(this.$content.css('height')),
+                wh = $.window.sel().height(),
+				ww = $.window.sel().width(),
+				_top = 0;
+            if (h <= wh) _top = scrollTop + (wh - h) / 2;
+			if (_top > 100 && _top - 100 >= scrollTop) _top -= 100;
+			if (_top < 0) _top = 0;
+			if (ww <= 990) _top = scrollTop;
+             this.$content.css('top', _top);
         },
 
         handleKeyDown: function (evt) {
@@ -2524,15 +2603,7 @@
         },
         
         hide: function () {
-            $.window
-                .off('resize', this.onWindowResize, false, this);
-            $.document
-                .off('keydown', this.handleKeyDown, false, this);
-            this.$view
-                .find('.gc-modal-close').off('click');
-            this.$view
-                .children('.gc-modal-overlay')
-                .off('click');
+            this.removeEvents();
             this.$view
                 .fadeOut('fast', this.callback(this.onFadeOut));
         },

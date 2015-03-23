@@ -12,9 +12,9 @@
      * @static
      * Check if this is a Mobile device.
      */
-    $.isMobile = (function () {
-        return (/ipad|android|ipod|iphone/i).test(window.navigator.userAgent);
-    }());
+    $.isMobile = (function (a) {
+		return /(android|bb\d+|meego).+mobile|avantgo|bada\/|blackberry|blazer|compal|elaine|fennec|hiptop|iemobile|ip(hone|od|ad)|iris|kindle|lge |maemo|midp|mmp|mobile.+firefox|netfront|opera m(ob|in)i|palm( os)?|phone|p(ixi|re)\/|plucker|pocket|psp|series(4|6)0|symbian|treo|up\.(browser|link)|vodafone|wap|windows ce|xda|xiino/i.test(a);
+    }(navigator.userAgent || navigator.vendor || window.opera));
     
     /**
      * @plugin $.Events
@@ -60,6 +60,18 @@
                    .replace(/\./g, "\\.")
                    .replace(/\+/g, "\\+")
                    .replace(/\*/g, "\\*");
+        return text;
+    };
+
+    $.removeAccents = function (text) {
+        var haystack    = "ãáàäâéèëêíìïîõóòöôúùüûç",
+            replacement = 'aaaaaeeeeiiiiooooouuuuc';
+		text = text.toLowerCase();
+        for (var i = 0; i < haystack.length; i++) {
+            var chr = haystack.charAt(i);
+            var rep = replacement.charAt(i);
+            text = text.replace(new RegExp(chr, 'g'), rep);
+        }
         return text;
     };
     

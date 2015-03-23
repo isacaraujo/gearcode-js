@@ -15,7 +15,8 @@
             contentWidth: '66%',
             contentBg: 'white',
             hideOnEsc: true,
-            showBtnClose: true
+            showBtnClose: true,
+            alwaysOnTop: true
         },
         
         $content: null,
@@ -40,17 +41,62 @@
         },
         
         onFadeIn: function () {
+            this.setupEvents();
+            this.onWindowResize();
+            this.dispatch('show', { controller: this });
+        },
+
+        setupEvents: function () {
             this.options.dismissOnClickOverlay && 
                 this.$view
                     .children('.gc-modal-overlay')
                     .on('click', this.callback(this.hide));
-            $.window.on('resize', this.onWindowResize, false, this);
-            this.onWindowResize();
+            $.window
+                .on('resize', this.onWindowResize, false, this);
             this.options.hideOnEsc && 
                 $.document.on('keydown', this.handleKeyDown, false, this);
             this.options.showBtnClose &&
-                this.$view.find('.gc-modal-close').on('click', this.callback(this.handleBtnClose));
-            this.dispatch('show', { controller: this });
+                this.$view.find('.gc-modal-close')
+                    .on('click', this.callback(this.handleBtnClose));
+            this.setAlwaysOnTop();
+        },
+
+        removeEvents: function () {
+            $.window
+                .off('resize', this.onWindowResize, false, this);
+            $.document
+                .off('keydown', this.handleKeyDown, false, this);
+            this.$view
+                .find('.gc-modal-close').off('click');
+            this.$view
+                .children('.gc-modal-overlay')
+                .off('click');
+            this.removeAlwaysOnTop();
+        },
+        
+        setAlwaysOnTop: function () {
+            if (!this.options.alwaysOnTop) return;
+            $.window.on('scroll', this.handleScroll, false, this);
+			this.handleScroll();
+        },
+        
+        removeAlwaysOnTop: function () {
+            if (!this.options.alwaysOnTop) return;
+            $.window.off('scroll', this.handleScroll, false, this);
+        },
+        
+        handleScroll: function (evt) {
+            var scrollTop = parseFloat($.window.e().scrollY),
+                //top = parseFloat(this.options.contentTop),
+                h = parseFloat(this.$content.css('height')),
+                wh = $.window.sel().height(),
+				ww = $.window.sel().width(),
+				_top = 0;
+            if (h <= wh) _top = scrollTop + (wh - h) / 2;
+			if (_top > 100 && _top - 100 >= scrollTop) _top -= 100;
+			if (_top < 0) _top = 0;
+			if (ww <= 990) _top = scrollTop;
+             this.$content.css('top', _top);
         },
 
         handleKeyDown: function (evt) {
@@ -75,15 +121,7 @@
         },
         
         hide: function () {
-            $.window
-                .off('resize', this.onWindowResize, false, this);
-            $.document
-                .off('keydown', this.handleKeyDown, false, this);
-            this.$view
-                .find('.gc-modal-close').off('click');
-            this.$view
-                .children('.gc-modal-overlay')
-                .off('click');
+            this.removeEvents();
             this.$view
                 .fadeOut('fast', this.callback(this.onFadeOut));
         },
