@@ -2612,9 +2612,11 @@
 
         setWrapperFixed: function () {
             if (!this.options.fixedWrapper) return;
-            var top = -$.window.e().scrollY;
+            var supportPageOffset = window.pageXOffset !== undefined;
+            var isCSS1Compat      = ((document.compatMode || "") === "CSS1Compat");
+            var top               = supportPageOffset ? window.pageYOffset : isCSS1Compat ? document.documentElement.scrollTop : document.body.scrollTop;
             $(this.options.fixedWrapper).css({
-                top: top,
+                top: -top,
                 position: 'fixed'
             });
             $.window.e().scrollTo(0, 0);
