@@ -1713,7 +1713,7 @@
             },
 
             registerValidator: function (name, className) {
-                this.resolveClass(Klass);
+                this.resolveClass(className);
                 this._validators[name] = className;
             },
 
@@ -2498,7 +2498,8 @@
             contentBg: 'white',
             hideOnEsc: true,
             showBtnClose: true,
-            alwaysOnTop: true
+            alwaysOnTop: true,
+            fixedWrapper: null
         },
         
         $content: null,
@@ -2515,16 +2516,15 @@
         },
         
         onLoad: function () {
+            this.setWrapperFixed();
             this.$view
                 .hide()
                 .appendTo($.document.e().body)
                 .fadeIn('fast', this.callback(this.onFadeIn));
-            this.onWindowResize();
         },
         
         onFadeIn: function () {
             this.setupEvents();
-            this.onWindowResize();
             this.dispatch('show', { controller: this });
         },
 
@@ -2533,19 +2533,14 @@
                 this.$view
                     .children('.gc-modal-overlay')
                     .on('click', this.callback(this.hide));
-            $.window
-                .on('resize', this.onWindowResize, false, this);
             this.options.hideOnEsc && 
                 $.document.on('keydown', this.handleKeyDown, false, this);
             this.options.showBtnClose &&
                 this.$view.find('.gc-modal-close')
                     .on('click', this.callback(this.handleBtnClose));
-            this.setAlwaysOnTop();
         },
 
         removeEvents: function () {
-            $.window
-                .off('resize', this.onWindowResize, false, this);
             $.document
                 .off('keydown', this.handleKeyDown, false, this);
             this.$view
@@ -2553,32 +2548,6 @@
             this.$view
                 .children('.gc-modal-overlay')
                 .off('click');
-            this.removeAlwaysOnTop();
-        },
-        
-        setAlwaysOnTop: function () {
-            if (!this.options.alwaysOnTop) return;
-            $.window.on('scroll', this.handleScroll, false, this);
-			this.handleScroll();
-        },
-        
-        removeAlwaysOnTop: function () {
-            if (!this.options.alwaysOnTop) return;
-            $.window.off('scroll', this.handleScroll, false, this);
-        },
-        
-        handleScroll: function (evt) {
-            var scrollTop = parseFloat($.window.e().scrollY),
-                //top = parseFloat(this.options.contentTop),
-                h = parseFloat(this.$content.css('height')),
-                wh = $.window.sel().height(),
-				ww = $.window.sel().width(),
-				_top = 0;
-            if (h <= wh) _top = scrollTop + (wh - h) / 2;
-			if (_top > 100 && _top - 100 >= scrollTop) _top -= 100;
-			if (_top < 0) _top = 0;
-			if (ww <= 990) _top = scrollTop;
-             this.$content.css('top', _top);
         },
 
         handleKeyDown: function (evt) {
@@ -2587,19 +2556,6 @@
 
         handleBtnClose: function (evt) {
             this.hide();
-        },
-        
-        onWindowResize: function (evt) {
-            var w = this.$content.width();
-            var bodyW = $($.document.e().body).width();
-            this.$content.css('left', Math.max((bodyW - w) / 2, 0));
-            this.updateHeight();
-        },
-
-        updateHeight: function () {
-            this.$view.css('height', '100%');
-            this.$view
-                .css('height', $.document.sel().height());
         },
         
         hide: function () {
@@ -2611,6 +2567,7 @@
         onFadeOut: function () {
             this.$view.remove();
             this.$view = null;
+            this.restoreWrapper();
             this.dispatch('hide', { controller: this });
         },
         
@@ -2628,7 +2585,7 @@
                 zIndex: this.options.zIndex
             });
             $overlay.children('.gc-modal-overlay').css({
-                position: 'absolute',
+                position: 'fixed',
                 width: '100%',
                 height: '100%',
                 top:  0,
@@ -2637,11 +2594,11 @@
                 opacity: 0.8
             });
             $overlay.children('.gc-modal-content').css({
-                position:   'absolute',
+                position:   'relative',
                 width:      this.options.contentWidth,
                 height:     'auto',
-                top:        this.options.contentTop,
-                left:       '20%',
+                margin:    '20px auto',
+                display:    'table',
                 backgroundColor: this.options.contentBg
             });
 
@@ -2651,6 +2608,23 @@
             }
 
             return $overlay;
+        },
+
+        setWrapperFixed: function () {
+            if (!this.options.fixedWrapper) return;
+            var top = -$.window.e().scrollY;
+            $(this.options.fixedWrapper).css({
+                top: top,
+                position: 'fixed'
+            });
+            $.window.e().scrollTo(0, 0);
+        },
+
+        restoreWrapper: function () {
+            if (!this.options.fixedWrapper) return;
+            var top = -parseFloat($(this.options.fixedWrapper).css('top'));
+            $(this.options.fixedWrapper).removeAttr('style');
+            $.window.e().scrollTo(0, top);
         }
     });
     

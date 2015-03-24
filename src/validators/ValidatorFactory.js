@@ -31,7 +31,7 @@
             },
 
             registerValidator: function (name, className) {
-                this.resolveClass(Klass);
+                this.resolveClass(className);
                 this._validators[name] = className;
             },
 
