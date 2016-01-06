@@ -1,51 +1,42 @@
-/*jslint nomen: true */
-/*global window*/
-/*global jQuery*/
+"use strict";
 
-(function ($, gc) {
-    "use strict";
-    
-    /** @namespace */
-    gc.screen = gc.screen || {};
-    
-    /** @class */
-    gc.screen.AbstractScreen = gc.display.DisplayObject.extend({
-        
-        init: function (options) {
-            this._super(options);
-            this.loadAccessors();
-        },
+var DisplayObject = require('../display/DisplayObject');
 
-        loadAccessors: function () {
-            this.sel().find('[data-accessor]').each(this.callback(this.onWalkAccessor));
-        },
-
-        onWalkAccessor: function (i, el) {
-            var accessor = $(el).data('accessor');
-            var options  = $(el).data('options') || {};
-            var ClassBase = gc.display.DisplayObject;
-            var isArray = false;
-            if (/\[\]$/.test(accessor)) {
-                accessor = accessor.substr(0, accessor.length -2);
-                isArray = true;
-            }
-            if (typeof this[accessor] === 'undefined') return;
-            if (isArray && !$.isArray(this[accessor])) this[accessor] = [];
-            if ($(el).data('class')) {
-                var classFragments = $(el).data('class').split('.');
-                var len = classFragments.length;
-                ClassBase = window;
-                for (var i = 0; i < len; i++) {
-                    var key = classFragments[i];
-                    ClassBase = ClassBase[key];
-                }
-            }
-            if (isArray) {
-                this[accessor].push(new ClassBase(el));
-            } else {
-                this[accessor] = new ClassBase(el);
-            }
-        }
-    });
+var AbstractScreen = module.exports = DisplayObject.extend({
     
-}(jQuery, window.gc = window.gc || {}));
+  init: function (options) {
+    this._super(options);
+    this.loadAccessors();
+  },
+
+  loadAccessors: function () {
+    this.sel().find('[data-accessor]').each(this.callback(this.onWalkAccessor));
+  },
+
+  onWalkAccessor: function (i, el) {
+    var accessor = $(el).data('accessor');
+    var options  = $(el).data('options') || {};
+    var ClassBase = gc.display.DisplayObject;
+    var isArray = false;
+    if (/\[\]$/.test(accessor)) {
+      accessor = accessor.substr(0, accessor.length -2);
+      isArray = true;
+    }
+    if (typeof this[accessor] === 'undefined') return;
+    if (isArray && !$.isArray(this[accessor])) this[accessor] = [];
+    if ($(el).data('class')) {
+      var classFragments = $(el).data('class').split('.');
+      var len = classFragments.length;
+      ClassBase = window;
+      for (var i = 0; i < len; i++) {
+        var key = classFragments[i];
+        ClassBase = ClassBase[key];
+      }
+    }
+    if (isArray) {
+      this[accessor].push(new ClassBase(el));
+    } else {
+      this[accessor] = new ClassBase(el);
+    }
+  }
+});

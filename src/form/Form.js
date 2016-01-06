@@ -1,12 +1,10 @@
-;(function ($, gc) {
+"use strict";
 
-    gc.form = gc.form || {};
+var DisplayObject = require('../display/DisplayObject');
 
-    gc.form.Form = gc.display.DisplayObject.extend({
+var Form = module.exports = DisplayObject.extend({
 
-        init: function (options) {
-            this._super(options);
-        }
-    });
-
-}(jQuery, window.gc = window.gc || {}));
+    init: function (options) {
+      this._super(options);
+    }
+});
