@@ -8,7 +8,10 @@ module.exports = function(grunt) {
 
     browserify: {
       options: {
-        // exclude: ['jquery', 'gsap']
+        alias: {
+          jquery: './src/vendors/jquery.js',
+          gsap: './src/vendors/gsap.js'
+        }
       },
       dist: {
         files: {

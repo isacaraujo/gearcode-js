@@ -10,7 +10,7 @@ var AbstractScreen = module.exports = DisplayObject.extend({
   },
 
   loadAccessors: function () {
-    this.sel().find('[data-accessor]').each(this.callback(this.onWalkAccessor));
+    this.$.find('[data-accessor]').each(this.callback(this.onWalkAccessor));
   },
 
   onWalkAccessor: function (i, el) {

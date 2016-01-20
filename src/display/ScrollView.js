@@ -2,7 +2,7 @@
 
 var $ = require('jquery'),
     DisplayObject = require('./DisplayObject'),
-    graph = require('../graph/Dimension'),
+    graph = require('../graph'),
     utils = require('../core/utils'),
     TweenMax = require('gsap');
 
@@ -53,13 +53,13 @@ var ScrollView = module.exports = DisplayObject.extend({
   setupUI: function () {
       this._super();
       this._document = $document;
-      this.sel().addClass('scrollview').css(this.options.size);
-      var children = $(this._element).children();
+      this.$.addClass('scrollview').css(this.options.size);
+      var children = $(this.e).children();
       this._hasChildren = children.length > 0;
       children.remove();
       this.setupViewport();
       this.setupContent();
-      this._content.sel().append(children);
+      this._content.$.append(children);
       this.setupEvents();
       this.setupBounds();
   },
@@ -67,34 +67,34 @@ var ScrollView = module.exports = DisplayObject.extend({
   destroy: function () {
     var children = null;
     if (this._hasChildren) {
-      children = this.getContent().sel().children();
+      children = this.getContent().$.children();
       children.remove();
     }
-    TweenMax.killTweensOf(this._content.e());
+    TweenMax.killTweensOf(this._content.e);
     this.removeEvents();
-    this._content.sel().remove(),  this._content  = null;
-    this._viewport.sel().remove(), this._viewport = null;
-    this.sel().removeClass('scrollview');
-    this.sel().removeAttr('style');
+    this._content.$.remove(),  this._content  = null;
+    this._viewport.$.remove(), this._viewport = null;
+    this.$.removeClass('scrollview');
+    this.$.removeAttr('style');
     if (children) {
-      this.sel().append(children);
+      this.$.append(children);
     }
   },
   
   setupViewport: function () {
     this._viewport = new gc.display.DisplayObject();
-    this._viewport.sel()
+    this._viewport.$
         .addClass('scrollview-viewport')
         .css(this.options.size)
-        .appendTo(this._element);
+        .appendTo(this.e);
   },
   
   setupContent: function () {
     this._content = new gc.display.DisplayObject();
-    this._content.sel()
+    this._content.$
         .addClass('scrollview-content')
         .css(this.options.contentSize)
-        .appendTo(this._viewport.e());
+        .appendTo(this._viewport.e);
   },
   
   setupEvents: function () {
@@ -127,15 +127,15 @@ var ScrollView = module.exports = DisplayObject.extend({
   },
   
   setSize: function (size) {
-    this.set('size', size);
-    this.sel().css(size);
-    this._viewport.sel().css(size);
+    this.options.size = size;
+    this.$.css(size);
+    this._viewport.$.css(size);
     this.setupBounds();
   },
   
   setContentSize: function (size) {
-    this.set('contentSize', size);
-    this._content.sel().css(size);
+    this.options.contentSize = size;
+    this._content.$.css(size);
     this.setupBounds();
   },
   
@@ -167,7 +167,7 @@ var ScrollView = module.exports = DisplayObject.extend({
   },
   
   onHandleDown: function (evt) {
-    TweenMax.killTweensOf(this._content.e());
+    TweenMax.killTweensOf(this._content.e);
     this.setupBounds();
     this._lastMousePosition = this.getMouseCoordinates(evt);
     this._translate = this._content.getTranslate();
@@ -262,52 +262,55 @@ var ScrollView = module.exports = DisplayObject.extend({
     );
   },
   
-scrollToTranslate: function (endPoint, animated) {
+  scrollToTranslate: function (endPoint, animated) {
     this._translate = endPoint;
     var supportTransform = $('html').hasClass('csstransforms');
     if (animated) {
       var temp;
       if (supportTransform) {
-          temp = { x: this._translate.x, y: this._translate.y };
-          if (this.options.useGpu) temp['z'] = 1;
+        temp = { x: this._translate.x, y: this._translate.y };
+        if (this.options.useGpu) temp['z'] = 1;
       } else {
-          temp = { left: this._translate.x, top: this._translate.y };
+        temp = { left: this._translate.x, top: this._translate.y };
       }
-      TweenMax.killTweensOf(this._content.e());
-      TweenMax.to(this._content.e(), 0.3, $.extend({
+      TweenMax.killTweensOf(this._content.e);
+      TweenMax.to(this._content.e, 0.3, $.extend({
         onUpdate: this.callback(function () {
-            if (supportTransform) {
-                this._translate = graphPointMake(this._content.e()._gsTransform.x, this._content.e()._gsTransform.y);
-            } else {
-                this._translate = graphPointMake(this._content.sel().css('left'), this._content.sel().css('top'));
-            }
-            this.dispatch(gc.events.ScrollEvent.SCROLL);
+          if (supportTransform) {
+            var gsTransform = this._content.e._gsTransform;
+            this._translate = graphPointMake(gsTransform.x, gsTransform.y);
+          } else {
+            var $sel = this._content.$;
+            this._translate = graphPointMake($sel.css('left'), $sel.css('top'));
+          }
+          this.dispatch(gc.events.ScrollEvent.SCROLL);
         }),
         onComplete: this.callback(function () {
-            if (supportTransform) {
-                this._translate = graphPointMake(this._content.e()._gsTransform.x, this._content.e()._gsTransform.y);
-            } else {
-                this._translate = graphPointMake(this._content.sel().css('left'), this._content.sel().css('top'));
-            }
-            this.dispatch(gc.events.ScrollEvent.SCROLL);
+          if (supportTransform) {
+            var gsTransform = this._content.e._gsTransform;
+            this._translate = graphPointMake(gsTransform.x, gsTransform.y);
+          } else {
+            var $sel = this._content.$;
+            this._translate = graphPointMake($sel.css('left'), $sel.css('top'));
+          }
+          this.dispatch(gc.events.ScrollEvent.SCROLL);
         }),
         ease: 'Quad.easeOut'
       }, temp));
       return;
     }
     if (supportTransform) {
-        var methodType = this.options.useGpu ? 
-                        'setTransform3d' : 
-                        'setTransform';
-        this._content[methodType]({
-          translateX: this._translate.x,
-          translateY: this._translate.y
-        });
+      var methodType = this.options.useGpu ? 
+        'setTransform3d' : 'setTransform';
+      this._content[methodType]({
+        translateX: this._translate.x,
+        translateY: this._translate.y
+      });
     } else {
-        this._content.sel().css({
-          left: this._translate.x,
-          top: this._translate.y
-        });
+      this._content.$.css({
+        left: this._translate.x,
+        top: this._translate.y
+      });
     }
     this.dispatch(gc.events.ScrollEvent.SCROLL);
   },

@@ -3,4 +3,4 @@ node_modules
 *.komodoproject
 *.DS_Store
 docs/*
-
+/vendors

@@ -1,14 +1,12 @@
 {
   "name": "gearcode-js",
-  "main": "dist/gearcode.js",
+  "main": "src/index.js",
   "version": "1.0.0",
   "devDependencies": {
     "grunt": "~0.4.1",
     "grunt-browserify": "^4.0.1",
     "grunt-contrib-clean": "^0.7.0",
     "grunt-contrib-concat": "~0.3.0",
-    "grunt-contrib-uglify": "~0.2.2",
-    "gsap": "^1.18.2",
-    "jquery": "^2.1.4"
+    "grunt-contrib-uglify": "~0.2.2"
   }
 }

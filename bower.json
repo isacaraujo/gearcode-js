@@ -1,0 +1,30 @@
+{
+  "name": "gearcode-js",
+  "description": "A javascript library to work with Object Oriented Programming.",
+  "main": "dist/gearcode.js",
+  "authors": [
+    "Isac Araujo <contato@isacaraujo.com.br>"
+  ],
+  "license": "MIT",
+  "keywords": [
+    "gc",
+    "gearcode",
+    "gearcode-js"
+  ],
+  "homepage": "https://github.com/isacaraujo/gearcode-js",
+  "moduleType": [
+    "amd"
+  ],
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "vendors",
+    "test",
+    "tests"
+  ],
+  "dependencies": {
+    "jquery": "~2.1.4",
+    "gsap": "greensock/GreenSock-JS#~1.18.2"
+  }
+}

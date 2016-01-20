@@ -20,15 +20,23 @@ var GCObject = module.exports = Class.extend({
     options = options || {};
     this.options = $.extend(true, {}, this.options, options);
   },
-  
-  get: function (key) {
-    if (!this.options[key]) return null;
-    return this.options[key];
+
+  defineGetter: function (name, fnCallback) {
+    Object.defineProperty(this, "$", { 
+      get: fnCallback
+    });
   },
-  
-  set: function (key, value) {
-    if (undefined !== this.options[key]) {
-      this.options[key] = value;
-    }
+
+  defineSetter: function (name, fnCallback) {
+    Object.defineProperty(this, "$", { 
+      set: fnCallback
+    });
+  },
+
+  defineGetterSetter: function (name, fnGetter, fnSetter) {
+    Object.defineProperty(this, "$", { 
+      get: fnGetter,
+      set: fnSetter
+    });
   }
 });

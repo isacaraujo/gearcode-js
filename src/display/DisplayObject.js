@@ -1,6 +1,6 @@
 "use strict";
 
-var graph = require('../graph/Dimension'),
+var graph = require('../graph'),
     jQuery = require('jquery'),
     $ = jQuery,
     EventDispatcher = require('../core/EventDispatcher');
@@ -30,12 +30,12 @@ var DisplayObject = module.exports = EventDispatcher.extend({
   
   /**
    * Objeto nativo visual.
-   * @property _element
+   * @property e
    * @private
    * @type Node
    * @default `div`
    */
-  _element: null,
+  e: null,
   
   
   /**
@@ -46,7 +46,10 @@ var DisplayObject = module.exports = EventDispatcher.extend({
    **/
   init: function (options) {
     this.setupElementOrOptions(options);
-    this._super(this._element);
+    this._super(this.e);
+    this.defineGetter('$', function () {
+      return jQuery(this.e)
+    });
   },
   
   
@@ -70,9 +73,9 @@ var DisplayObject = module.exports = EventDispatcher.extend({
     }
     
     this.setOptions(options);
-    var selector = this.get('selector');
+    var selector = this.options.selector;
     if (!selector) {
-        this._element = document.createElement('div');
+        this.e = document.createElement('div');
         return;
     }
     this.e = $(selector).get(0);
@@ -86,7 +89,7 @@ var DisplayObject = module.exports = EventDispatcher.extend({
    * @return {Object} Retorna um objeto com as coordenadas espaciais do elemento.
    **/
   getTransform: function () {
-    var matrix = this.sel().css('transform');
+    var matrix = this.$.css('transform');
     if ('' == matrix || null == matrix || 'none' == matrix || undefined == matrix) return TransformMakeZero();
     var parts = matrix.replace(/matrix(3d)?\(/, '').replace(')', '').split(', ');
     if (parts.length == 6) {
@@ -109,7 +112,7 @@ var DisplayObject = module.exports = EventDispatcher.extend({
     var matrix = TransformMakeZero();
     matrix = $.extend(matrix, params);
     var matrixParams = [matrix.scaleX, matrix.rotateX, matrix.rotateY, matrix.scaleY, matrix.translateX, matrix.translateY].join(', ');
-    this.sel().css('transform', 'matrix(' + matrixParams + ')');
+    this.$.css('transform', 'matrix(' + matrixParams + ')');
   },
   
   
@@ -126,7 +129,7 @@ var DisplayObject = module.exports = EventDispatcher.extend({
                         matrix.scaleY, matrix.a1, matrix.b1, matrix.c1, matrix.d1,
                         matrix.scaleZ, matrix.a2, matrix.translateX, matrix.translateY, matrix.translateZ, 
                         matrix.b2].join(', ');
-    this.sel().css('transform', 'matrix3d(' + matrixParams + ')');
+    this.$.css('transform', 'matrix3d(' + matrixParams + ')');
   },
   
   
